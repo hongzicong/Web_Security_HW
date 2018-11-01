@@ -156,7 +156,10 @@ class Des:
         for ch in data:
             i = 7
             while i >= 0:
-                result[pos] = ch & (1 << i)
+                if ch & (1 << i) != 0:
+                    result[pos] = 1
+                else:
+                    result[pos] = 0
                 pos += 1
                 i -= 1
 
@@ -174,14 +177,14 @@ class Des:
                 c = 0
             pos += 1
 
-        return str(result)
+        return bytes(result)
 
 
     def __createSubKeys(self):
         try:
-            self.__key = self.__key.encode('ascii')
+            self.__key = self.__key.encode()
         except UnicodeEncodeError:
-            raise ValueError("pyDes can only work with encoded strings, not Unicode.")
+            raise ValueError("Encode error")
         key = self.__permutate(Des.__PC1, self.__str2BitList(self.__key))
         left = key[:28]
         right = key[28:]
@@ -197,10 +200,14 @@ class Des:
             
             
     def __padData(self, data):
-        pad_len = 8 - (len(data) % 8)
-        data += bytes([pad_len] * pad_len)
+        padLen = 8 - (len(data) % 8)
+        data += bytes([padLen] * padLen)
         return data
         
+    def __unpadData(self, data):
+        padLen = data[-1]
+        data = data[:-padLen]
+        return data
         
     def crypt(self, data, cryptType):
         i = 0
@@ -234,10 +241,7 @@ class Des:
                 while k < 8:
                     m = (B[k][0] << 1) + B[k][5]
                     n = (B[k][1] << 3) + (B[k][2] << 2) + (B[k][3] << 1) + B[k][4]
-                    
-                    print(m)
-                    print(n)
-                    v = Des.__sBoxes[k][(m << 4) + n]
+                    v = Des.__sBoxes[k][m][n]
                     
                     Bn[pos] = (v & 8) >> 3
                     Bn[pos + 1] = (v & 4) >> 2
@@ -247,15 +251,15 @@ class Des:
                     pos += 4
                     k += 1
                     
-                right = self.__permutate(Des.__IP, Bn)
-                right = list(map(lambda x, y: x ^ y, right, left))
+                right = self.__permutate(Des.__PSubstitute, Bn)
+                right = list(map(lambda x, y: x ^ y, left, right))
                 left = tempRight
                 
                 j += 1
                 start += add
                 
             block = self.__permutate(Des.__inverseIP, right + left)
-            result.append(self.__BitList2Str(block))
+            result.append(self.__bitList2Str(block))
             i += 8
             
         return bytes.fromhex('').join(result)
@@ -263,11 +267,11 @@ class Des:
 
     def encrypt(self, data):
         try:
-            data = data.encode('ascii')
+            data = data.encode()
         except UnicodeEncodeError:
-            raise ValueError("pyDes can only work with encoded strings, not Unicode.")
+            raise ValueError("Encode error")
         return self.crypt(self.__padData(data), Des.ENCRYPT)
 
 
     def decrypt(self, data):
-        return self.crypt(data, Des.DECRYPT)
+        return self.__unpadData(self.crypt(data, Des.DECRYPT))
