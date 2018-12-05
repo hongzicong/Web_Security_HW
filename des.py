@@ -210,57 +210,54 @@ class Des:
         return data
         
     def crypt(self, data, cryptType):
-        i = 0
         result = []
         
-        while i < len(data):
-            block = self.__str2BitList(data[i : i + 8])
-            block = self.__permutate(Des.__IP, block)
+        block = self.__str2BitList(data[:])
+        block = self.__permutate(Des.__IP, block)
+        
+        left = block[:32]
+        right = block[32:]
+        
+        if cryptType == Des.ENCRYPT:
+            start = 0
+            add = 1
+        else:
+            start = 15
+            add = -1
+        
+        j = 0
+        while j < 16:
+            tempRight = right[:]
+            right = self.__permutate(Des.__EExpansion, right)
             
-            left = block[:32]
-            right = block[32:]
+            right = list(map(lambda x, y: x ^ y, right, self.K[start]))
+            B = [right[6 * i:6 * (i + 1)] for i in range(8)]
             
-            if cryptType == Des.ENCRYPT:
-                start = 0
-                add = 1
-            else:
-                start = 15
-                add = -1
+            k = 0
+            Bn = [0] * 32
+            pos = 0
+            while k < 8:
+                m = (B[k][0] << 1) + B[k][5]
+                n = (B[k][1] << 3) + (B[k][2] << 2) + (B[k][3] << 1) + B[k][4]
+                v = Des.__sBoxes[k][m][n]
+                
+                Bn[pos] = (v & 8) >> 3
+                Bn[pos + 1] = (v & 4) >> 2
+                Bn[pos + 2] = (v & 2) >> 1
+                Bn[pos + 3] = v & 1
+                
+                pos += 4
+                k += 1
+                
+            right = self.__permutate(Des.__PSubstitute, Bn)
+            right = list(map(lambda x, y: x ^ y, left, right))
+            left = tempRight
             
-            j = 0
-            while j < 16:
-                tempRight = right[:]
-                right = self.__permutate(Des.__EExpansion, right)
-                
-                right = list(map(lambda x, y: x ^ y, right, self.K[start]))
-                B = [right[6 * i:6 * (i + 1)] for i in range(8)]
-                
-                k = 0
-                Bn = [0] * 32
-                pos = 0
-                while k < 8:
-                    m = (B[k][0] << 1) + B[k][5]
-                    n = (B[k][1] << 3) + (B[k][2] << 2) + (B[k][3] << 1) + B[k][4]
-                    v = Des.__sBoxes[k][m][n]
-                    
-                    Bn[pos] = (v & 8) >> 3
-                    Bn[pos + 1] = (v & 4) >> 2
-                    Bn[pos + 2] = (v & 2) >> 1
-                    Bn[pos + 3] = v & 1
-                    
-                    pos += 4
-                    k += 1
-                    
-                right = self.__permutate(Des.__PSubstitute, Bn)
-                right = list(map(lambda x, y: x ^ y, left, right))
-                left = tempRight
-                
-                j += 1
-                start += add
-                
-            block = self.__permutate(Des.__inverseIP, right + left)
-            result.append(self.__bitList2Str(block))
-            i += 8
+            j += 1
+            start += add
+            
+        block = self.__permutate(Des.__inverseIP, right + left)
+        result.append(self.__bitList2Str(block))
             
         return bytes.fromhex('').join(result)
         
@@ -270,8 +267,18 @@ class Des:
             data = data.encode()
         except UnicodeEncodeError:
             raise ValueError("Encode error")
-        return self.crypt(self.__padData(data), Des.ENCRYPT)
+        result = b''
+        j = 0
+        for i in range(len(data) // 8):
+            result += self.crypt(data[8 * i: 8 * (i + 1)], Des.ENCRYPT)
+            j = i
+        result += self.crypt(self.__padData(data[8 * (j + 1):]), Des.ENCRYPT)
+        return result
 
 
     def decrypt(self, data):
-        return self.__unpadData(self.crypt(data, Des.DECRYPT))
+        result = ""
+        for i in range(len(data) // 8 - 1):
+            result += self.crypt(data[8 * i: 8 * (i + 1)], Des.DECRYPT).decode()
+        result += self.__unpadData(self.crypt(data[-8:], Des.DECRYPT)).decode()
+        return result
