@@ -246,7 +246,7 @@ def decrypt(self, data):
 
 密文：b'\x94\xd4Ck\xc3\xb5\xb6\x93\xfe\xb9Y\xb7\xd4d/\xcb'
 
-![avatar](./result1.PNG)
+![avatar](./screenshot/result1.PNG)
 
 > Case 2
 
@@ -256,7 +256,7 @@ def decrypt(self, data):
 
 密文：b'Hl\xb8\xb8\x1c\xac\xcd\xb7'
 
-![avatar](./result.PNG)
+![avatar](./screenshot/result.PNG)
 
 > Case 3
 
@@ -266,4 +266,4 @@ def decrypt(self, data):
 
 密文：b'Ts\x7f\x05\xcd\x01\x02\x985\xa5\xc5i\x96+\xe9 \xfe\xb9Y\xb7\xd4d/\xcb'
 
-![avatar](./result2.PNG)
+![avatar](./screenshot/result2.PNG)
