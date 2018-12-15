@@ -57,9 +57,6 @@ object_id_to_string_map = {
     "2.5.29.36": "X509v3 Policy Constraints",
     "2.5.29.37": "X509v3 Extended Key Usage",
 
-}
-
-algorithm_id_to_string_map = {
     # Algorithm
     '1.2.840.10040.4.1': 'DSA',
     "1.2.840.10040.4.3": "sha1DSA",
@@ -74,14 +71,9 @@ algorithm_id_to_string_map = {
 }
 
 version_id_to_string_map = {
-    0: 'V1',
-    1: 'V2',
-    2: 'V3'
-}
-
-time_id_to_string_map = {
-    0: 'not before: ',
-    1: 'not after: '
+    '0': 'V1',
+    '1': 'V2',
+    "2": 'V3'
 }
 
 
@@ -107,7 +99,7 @@ def value_to_string(tag_number, value):
     if tag_number == asn1.Numbers.ObjectIdentifier:
         return object_identifier_to_string(value)
     elif isinstance(value, bytes):
-        return binascii.hexlify(value).upper().decode()
+        return str(binascii.hexlify(value).upper())
     elif isinstance(value, str):
         return value
     else:
@@ -118,8 +110,6 @@ class X509Process:
 
     def __init__(self, file):
         self.file = file
-        self.count = 4
-        self.time_count = 2
 
     def process(self):
         encoded_bytes = file.read()
@@ -132,41 +122,11 @@ class X509Process:
             tag = input_stream.peek()
             if tag.typ == asn1.Types.Primitive:
                 tag, value = input_stream.read()
-                if self.count == 4:
-                    print("Version: {}".format(version_id_to_string_map[value]))
-                    self.count -= 1
-                elif self.count == 3:
-                    print("Serial Number: {}".format(value))
-                    self.count -= 1
-                elif tag_id_to_string(tag.nr) == "OBJECT" and value in algorithm_id_to_string_map:
-                    print('Algorithm: {}'.format(algorithm_id_to_string_map[value]))
-                elif tag_id_to_string(tag.nr) == "OBJECT" and value_to_string(tag.nr, value) == 'countryName' and self.count == 2:
-                    print('Issuer')
-                    print('{}: '.format(value_to_string(tag.nr, value)), end='')
-                    self.count -= 1
-                elif tag_id_to_string(tag.nr) == "OBJECT" and value_to_string(tag.nr, value) == 'countryName' and self.count == 1:
-                    print('Subject')
-                    print('{}: '.format(value_to_string(tag.nr, value)), end='')
-                    self.count -= 1
-                elif tag_id_to_string(tag.nr) == "UTCTIME" and self.time_count == 2:
-                    time_str = value_to_string(tag.nr, value)
-                    print('Validity not before (UTC): 20{}.{}.{} {}:{}:{} '.format(time_str[0:2], time_str[2:4],
-                     time_str[4:6], time_str[6:8], time_str[8:10], time_str[10:12]))
-                    self.time_count -= 1
-                elif tag_id_to_string(tag.nr) == "UTCTIME" and self.time_count == 1:
-                    time_str = value_to_string(tag.nr, value)
-                    print('Validity not after (UTC): 20{}.{}.{} {}:{}:{} '.format(time_str[0:2], time_str[2:4],
-                     time_str[4:6], time_str[6:8], time_str[8:10], time_str[10:12]))
-                    self.time_count -= 1
-                elif tag_id_to_string(tag.nr) == "OBJECT":
-                    print('{}: '.format(value_to_string(tag.nr, value)), end='')
-                elif tag_id_to_string(tag.nr) == "PRINTABLESTRING":
-                    print(value_to_string(tag.nr, value))
-                elif tag_id_to_string(tag.nr) == "NULL":
-                    continue
-                else:
-                    print('{}'.format(value_to_string(tag.nr, value)))
+                print(' ' * index, end='')
+                print('[{}] {}: {}'.format(class_id_to_string(tag.cls), tag_id_to_string(tag.nr), value_to_string(tag.nr, value)))
             elif tag.typ == asn1.Types.Constructed:
+                print(' ' * index, end='')
+                print('[{}] {}'.format(class_id_to_string(tag.cls), tag_id_to_string(tag.nr)))
                 input_stream.enter()
                 self.print_result(input_stream, index + 2)
                 input_stream.leave()
