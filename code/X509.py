@@ -131,7 +131,10 @@ class X509Process:
         while not input_stream.eof():
             tag = input_stream.peek()
             if tag.typ == asn1.Types.Primitive:
-                tag, value = input_stream.read()
+                try:
+                    tag, value = input_stream.read()
+                except Exception as e:
+                    return
                 if self.count == 4:
                     print("Version: {}".format(version_id_to_string_map[value]))
                     self.count -= 1
